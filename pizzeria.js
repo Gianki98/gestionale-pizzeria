@@ -80,9 +80,18 @@ async function initializeApp() {
     setupWebSocketListeners();
 
     // Dentro initializeApp, dopo setupWebSocketListeners();
-    setTimeout(() => {
-      syncExistingOrders();
-    }, 1000);
+    // Attendi che il socket sia completamente connesso prima di sincronizzare
+    if (api.socket.connected) {
+      setTimeout(() => {
+        syncExistingOrders();
+      }, 500);
+    } else {
+      api.socket.once("connect", () => {
+        setTimeout(() => {
+          syncExistingOrders();
+        }, 500);
+      });
+    }
 
     // Definisci la funzione globale per aggiornare l'interfaccia
     window.aggiornaListaOrdini = async function () {
