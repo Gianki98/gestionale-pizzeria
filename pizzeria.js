@@ -1,4 +1,5 @@
 // Definizione dello stato dell'applicazione
+printReceipt;
 const appState = {
   menu: {
     categories: [
@@ -4469,6 +4470,18 @@ function printReceipt() {
 
       // Descrizione per mezze familiari
       if (item.isHalfFamily) {
+        // Calcola il prezzo delle aggiunzioni per le mezze familiari
+        if (item.firstHalf && item.firstHalf.additions) {
+          item.firstHalf.additions.forEach((addition) => {
+            itemPrice += addition.price;
+          });
+        }
+        if (item.secondHalf && item.secondHalf.additions) {
+          item.secondHalf.additions.forEach((addition) => {
+            itemPrice += addition.price;
+          });
+        }
+
         itemDescription = `Familiare: (1/2 + 1/2)`;
 
         // Aggiungi dettagli delle due metà
