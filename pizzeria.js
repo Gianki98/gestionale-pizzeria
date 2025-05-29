@@ -1,5 +1,5 @@
 // Definizione dello stato dell'applicazione
-printReceipt;
+setupWebSocketListeners;
 const appState = {
   menu: {
     categories: [
@@ -201,18 +201,58 @@ function setupWebSocketListeners() {
   socket.on("sync_all_orders_broadcast", (data) => {
     console.log("🔄 Sincronizzazione completa ricevuta:", data);
 
-    // Aggiorna solo se ci sono differenze
-    if (data.tables && data.tables.length !== appState.tables.length) {
+    // NUOVO: Se non abbiamo dati locali, accetta sempre i dati dal server
+    const hasLocalData =
+      appState.tables.length > 0 || appState.takeaways.length > 0;
+
+    if (!hasLocalData) {
+      // Nuovo dispositivo: accetta tutti i dati
+      console.log("📥 Nuovo dispositivo - accetto tutti i dati dal server");
+      appState.tables = data.tables || [];
+      appState.takeaways = data.takeaways || [];
+      renderTables();
+      renderTakeaways();
+      saveData();
+    } else {
+      // Dispositivo esistente: confronta e aggiorna solo se necessario
+      const serverHasMoreTables =
+        data.tables && data.tables.length > appState.tables.length;
+      const serverHasMoreTakeaways =
+        data.takeaways && data.takeaways.length > appState.takeaways.length;
+
+      if (serverHasMoreTables) {
+        console.log("📥 Il server ha più tavoli, aggiorno");
+        appState.tables = data.tables;
+        renderTables();
+      }
+
+      if (serverHasMoreTakeaways) {
+        console.log("📥 Il server ha più asporti, aggiorno");
+        appState.takeaways = data.takeaways;
+        renderTakeaways();
+      }
+
+      if (serverHasMoreTables || serverHasMoreTakeaways) {
+        saveData();
+      }
+    }
+  });
+  // NUOVO: Listener per ricevere i dati quando li richiediamo
+  socket.on("sync_response", (data) => {
+    console.log("📥 Risposta sincronizzazione ricevuta:", data);
+
+    if (data.tables && data.tables.length > 0) {
       appState.tables = data.tables;
       renderTables();
     }
 
-    if (data.takeaways && data.takeaways.length !== appState.takeaways.length) {
+    if (data.takeaways && data.takeaways.length > 0) {
       appState.takeaways = data.takeaways;
       renderTakeaways();
     }
 
     saveData();
+    console.log("✅ Sincronizzazione completata");
   });
   // Listener per chiusura ordini
   socket.on("ordine_chiuso", (data) => {
@@ -5139,11 +5179,20 @@ function renderTables(statusFilter = "all") {
 async function syncExistingOrders() {
   if (!api || !api.socket) return;
 
-  // Invia tutti i tavoli e asporti al server per sincronizzazione
-  api.socket.emit("sync_all_orders", {
-    tables: appState.tables,
-    takeaways: appState.takeaways,
-  });
+  // NUOVO: Se non abbiamo dati locali, chiedi al server invece di inviare
+  if (appState.tables.length === 0 && appState.takeaways.length === 0) {
+    console.log(
+      "📥 Nessun dato locale, richiedo sincronizzazione dal server..."
+    );
+    api.socket.emit("request_sync");
+  } else {
+    // Solo se abbiamo dati locali, inviali
+    console.log("📤 Invio dati locali per sincronizzazione...");
+    api.socket.emit("sync_all_orders", {
+      tables: appState.tables,
+      takeaways: appState.takeaways,
+    });
+  }
 }
 function getCurrentOrderItem(index) {
   let orderObject;
