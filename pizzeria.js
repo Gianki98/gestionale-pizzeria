@@ -4755,6 +4755,249 @@ function printReceipt() {
     printWindow.close();
   };
 }
+//stampa chiusura giornaliera
+
+function printDailyReport() {
+  // Funzione helper per calcolare il totale di un ordine
+  function calculateOrderTotal(order, isTable = false) {
+    let subtotal = 0;
+
+    // Aggiungi il costo dei coperti se è un tavolo
+    if (isTable && order.covers > 0) {
+      const coverCharge = order.covers * appState.settings.coverCharge;
+      subtotal += coverCharge;
+    }
+
+    // Aggiungi il costo di tutti gli items
+    if (order.items) {
+      order.items.forEach((item) => {
+        // Calcola il prezzo base con aggiunzioni
+        let itemPrice = item.basePrice;
+
+        // Prezzo doppio per le pizze familiari
+        if (item.isFamily) {
+          itemPrice *= 2;
+        }
+
+        // Calcola il prezzo delle aggiunzioni per le mezze familiari
+        if (item.isHalfFamily) {
+          if (item.firstHalf && item.firstHalf.additions) {
+            item.firstHalf.additions.forEach((addition) => {
+              itemPrice += addition.price;
+            });
+          }
+          if (item.secondHalf && item.secondHalf.additions) {
+            item.secondHalf.additions.forEach((addition) => {
+              itemPrice += addition.price;
+            });
+          }
+        }
+
+        // Aggiungi il prezzo delle aggiunzioni normali
+        if (item.additions && item.additions.length > 0) {
+          item.additions.forEach((addition) => {
+            // Per le pizze familiari, anche le aggiunte costano il doppio
+            let additionPrice = addition.price;
+            if (item.isFamily) {
+              additionPrice *= 2;
+            }
+            itemPrice += additionPrice;
+          });
+        }
+
+        // Applica sconto se presente
+        let finalPrice = itemPrice;
+        if (item.discount > 0) {
+          finalPrice = itemPrice * (1 - item.discount / 100);
+        }
+
+        // Se è un omaggio, il prezzo è 0
+        if (item.isComplement) {
+          finalPrice = 0;
+        }
+
+        // Moltiplica per la quantità
+        const totalPrice = finalPrice * item.quantity;
+        subtotal += totalPrice;
+      });
+    }
+
+    // Calcola l'importo dello sconto sull'ordine
+    let discountAmount = 0;
+    if (order.discount > 0) {
+      if (order.discountType === "percentage") {
+        discountAmount = subtotal * (order.discount / 100);
+      } else if (order.discountType === "fixed") {
+        discountAmount = Math.min(order.discount, subtotal);
+      }
+    }
+
+    // Calcola il totale finale
+    return subtotal - discountAmount;
+  }
+
+  // Calcola i totali per gli asporti
+  let totalTakeawayAmount = 0;
+  let totalTakeawayOrders = 0;
+
+  appState.takeaways.forEach((takeaway) => {
+    if (
+      takeaway.order &&
+      takeaway.order.items &&
+      takeaway.order.items.length > 0
+    ) {
+      const orderTotal = calculateOrderTotal(takeaway.order, false);
+      if (orderTotal > 0) {
+        totalTakeawayAmount += orderTotal;
+        totalTakeawayOrders++;
+      }
+    }
+  });
+
+  // Calcola i totali per i tavoli
+  let totalTableAmount = 0;
+  let totalTableOrders = 0;
+
+  appState.tables.forEach((table) => {
+    if (table.order && table.order.items && table.order.items.length > 0) {
+      const orderTotal = calculateOrderTotal(table.order, true);
+      if (orderTotal > 0) {
+        totalTableAmount += orderTotal;
+        totalTableOrders++;
+      }
+    }
+  });
+
+  // Calcola il totale giornaliero
+  const totalDaily = totalTakeawayAmount + totalTableAmount;
+
+  // Crea la finestra di stampa
+  const printWindow = window.open("", "_blank");
+
+  // Data e ora correnti
+  const now = new Date();
+  const dateString = now.toLocaleDateString("it-IT");
+  const timeString = now.toLocaleTimeString("it-IT");
+
+  // Genera il contenuto del report
+  let content = `
+    <html>
+    <head>
+      <title>Chiusura Giornaliera - ${dateString}</title>
+      <style>
+        body { 
+          font-family: Arial, sans-serif; 
+          margin: 0; 
+          padding: 20px; 
+          max-width: 300px;
+        }
+        h1 { 
+          font-size: 20px; 
+          text-align: center; 
+          margin-bottom: 10px; 
+        }
+        h2 { 
+          font-size: 18px; 
+          text-align: center;
+          margin-bottom: 20px;
+        }
+        .date-time { 
+          text-align: center; 
+          font-size: 14px; 
+          margin-bottom: 30px; 
+        }
+        .section { 
+          margin-bottom: 15px;
+          padding: 10px;
+          background-color: #f5f5f5;
+          border-radius: 5px;
+        }
+        .section-title { 
+          font-weight: bold; 
+          font-size: 16px;
+          margin-bottom: 5px;
+        }
+        .amount { 
+          font-size: 18px;
+          color: #2563eb;
+        }
+        .orders-count {
+          font-size: 14px;
+          color: #666;
+        }
+        .divider { 
+          border-top: 2px dashed #000; 
+          margin: 20px 0; 
+        }
+        .total-section {
+          background-color: #000;
+          color: white;
+          padding: 15px;
+          border-radius: 5px;
+          text-align: center;
+        }
+        .total-label {
+          font-size: 18px;
+          font-weight: bold;
+          margin-bottom: 5px;
+        }
+        .total-amount {
+          font-size: 24px;
+          font-weight: bold;
+        }
+        .footer {
+          margin-top: 30px;
+          text-align: center;
+          font-size: 12px;
+          color: #666;
+        }
+      </style>
+    </head>
+    <body>
+      <h1>${appState.settings.restaurantName}</h1>
+      <h2>CHIUSURA GIORNALIERA</h2>
+      
+      <div class="date-time">
+        <div>Data: ${dateString}</div>
+        <div>Ora: ${timeString}</div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">TOTALE ASPORTO</div>
+        <div class="amount">€ ${totalTakeawayAmount.toFixed(2)}</div>
+        <div class="orders-count">(${totalTakeawayOrders} ordini)</div>
+      </div>
+      
+      <div class="section">
+        <div class="section-title">TOTALE TAVOLI</div>
+        <div class="amount">€ ${totalTableAmount.toFixed(2)}</div>
+        <div class="orders-count">(${totalTableOrders} ordini)</div>
+      </div>
+      
+      <div class="divider"></div>
+      
+      <div class="total-section">
+        <div class="total-label">TOTALE GIORNALIERO</div>
+        <div class="total-amount">€ ${totalDaily.toFixed(2)}</div>
+      </div>
+      
+      <div class="footer">
+        --- Fine Report ---
+      </div>
+    </body>
+    </html>
+  `;
+
+  // Scrivi il contenuto e stampa
+  printWindow.document.write(content);
+  printWindow.document.close();
+
+  // Attendi il caricamento e stampa
+  printWindow.onload = function () {
+    printWindow.print();
+    printWindow.close();
+  };
+}
 
 // Export e import dei dati
 function exportData() {
