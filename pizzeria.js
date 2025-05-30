@@ -1,5 +1,4 @@
 // Definizione dello stato dell'applicazione
-setupWebSocketListeners;
 const appState = {
   menu: {
     categories: [
@@ -4248,6 +4247,7 @@ function printOrder() {
   const antipasti = [];
   const pizzeNormali = [];
   const pizzeFamiliari = [];
+  const schiacciate = [];
   const altriProdotti = [];
 
   if (orderObject.items && orderObject.items.length > 0) {
@@ -4259,6 +4259,8 @@ function printOrder() {
 
       if (menuItem && menuItem.categoryId === "antipasti") {
         antipasti.push(item);
+      } else if (menuItem && menuItem.categoryId === "schiacciate") {
+        schiacciate.push(item);
       } else if (item.isHalfFamily) {
         // Le mezze familiari vanno sempre nelle pizze familiari
         pizzeFamiliari.push(item);
@@ -4337,6 +4339,10 @@ function printOrder() {
     (sum, item) => sum + item.quantity,
     0
   );
+  const totaleSchiacciate = schiacciate.reduce(
+    (sum, item) => sum + item.quantity,
+    0
+  );
 
   if (totalePizzeNormali > 0) {
     content += `Pizze Normali: ${totalePizzeNormali}<br>`;
@@ -4344,7 +4350,14 @@ function printOrder() {
   if (totalePizzeFamiliari > 0) {
     content += `Pizze Familiari: ${totalePizzeFamiliari}<br>`;
   }
-  if (totalePizzeNormali === 0 && totalePizzeFamiliari === 0) {
+  if (totaleSchiacciate > 0) {
+    content += `Schiacciate: ${totaleSchiacciate}<br>`;
+  }
+  if (
+    totalePizzeNormali === 0 &&
+    totalePizzeFamiliari === 0 &&
+    totaleSchiacciate === 0
+  ) {
     content += "Nessuna pizza nell'ordine<br>";
   }
   content += "</div>";
@@ -4430,7 +4443,14 @@ function printOrder() {
       }
     });
   }
-
+  // Stampa schiacciate
+  if (schiacciate.length > 0) {
+    content += '<div class="section-divider"></div>';
+    content += "<h3>SCHIACCIATE</h3>";
+    schiacciate.forEach((item) => {
+      content += printItem(item);
+    });
+  }
   // Stampa altri prodotti
   if (altriProdotti.length > 0) {
     content += '<div class="section-divider"></div>';
