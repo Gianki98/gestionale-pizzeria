@@ -15,6 +15,15 @@ const io = new Server(server, {
 
 const port = 3000;
 
+// Stato globale condiviso
+let sharedState = {
+  tables: [],
+  takeaways: [],
+  deliveries: [],
+  riders: [],
+  timestamp: null,
+};
+
 // Middleware
 app.use(cors());
 app.use(express.json());
@@ -292,9 +301,29 @@ io.on("connection", (socket) => {
   });
 
   socket.on("sync_all_orders", (data) => {
-    console.log("📢 Sincronizzazione completa richiesta");
-    socket.broadcast.emit("sync_all_orders_broadcast", data);
-  });
+  console.log("📢 Sincronizzazione completa richiesta");
+  
+  // Aggiorna solo se i dati sono più recenti
+  if (!sharedState.timestamp || 
+      !data.timestamp || 
+      new Date(data.timestamp) > new Date(sharedState.timestamp)) {
+    
+    sharedState = {
+      tables: data.tables || [],
+      takeaways: data.takeaways || [],
+      deliveries: data.deliveries || [],
+      riders: data.riders || [],
+      timestamp: data.timestamp || new Date().toISOString()
+    };
+    
+    console.log("💾 Stato globale aggiornato con dati più recenti");
+  } else {
+    console.log("⏭️ Ignorati dati più vecchi");
+  }
+  
+  // Invia a tutti i client (incluso il mittente) lo stato aggiornato
+  io.emit("sync_all_orders_broadcast", sharedState);
+});
 
   socket.on("ordine_chiuso", (data) => {
     console.log("📢 Ordine chiuso, broadcasting a tutti tranne mittente...");
@@ -303,6 +332,22 @@ io.on("connection", (socket) => {
 
   socket.on("disconnect", () => {
     console.log("❌ Client disconnesso:", socket.id);
+  });
+  socket.on("sync_request", (localData) => {
+  console.log("📢 Richiesta sincronizzazione ricevuta");
+  
+  // Invia SEMPRE lo stato globale del server
+  // Il client non deve MAI sovrascrivere con dati vecchi
+  socket.emit("sync_response", {
+    ...sharedState,
+    forceUpdate: true // Flag per indicare che deve accettare questi dati
+  });
+});
+  socket.on("delivery_aggiornato", (deliveryData) => {
+    console.log(
+      "📦 Delivery aggiornato, broadcasting a tutti tranne mittente..."
+    );
+    socket.broadcast.emit("delivery_aggiornato", deliveryData);
   });
 });
 

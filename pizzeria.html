@@ -73,6 +73,7 @@
       <div class="tabs">
         <button class="tab active" data-tab="tables">Tavoli</button>
         <button class="tab" data-tab="takeaway">Asporto</button>
+        <button class="tab" data-tab="delivery">Domicilio</button>
         <button class="tab" data-tab="menu-editor">Gestione Menu</button>
       </div>
 
@@ -105,7 +106,48 @@
           <!-- Ordini asporto generati dinamicamente -->
         </div>
       </div>
+      <div id="delivery" class="tab-content">
+        <div class="mb-2 flex justify-between items-center">
+          <h2>Gestione Domicilio</h2>
+          <button id="addDeliveryBtn" class="btn btn-primary">
+            Nuovo Domicilio
+          </button>
+        </div>
 
+        <!-- Filtri per stato consegna -->
+        <div class="mb-1">
+          <select id="deliveryStatusFilter" class="form-control">
+            <option value="all">Tutti gli ordini</option>
+            <option value="pending">Da fare</option>
+            <option value="delivering">In consegna</option>
+            <option value="delivered">Consegnati</option>
+          </select>
+        </div>
+
+        <!-- Container per gli ordini divisi per stato -->
+        <div class="delivery-sections">
+          <div class="delivery-section">
+            <h3>Da fare</h3>
+            <div class="tables-container" id="deliveryPendingContainer">
+              <!-- Ordini da fare -->
+            </div>
+          </div>
+
+          <div class="delivery-section">
+            <h3>In consegna</h3>
+            <div class="tables-container" id="deliveryDeliveringContainer">
+              <!-- Ordini in consegna -->
+            </div>
+          </div>
+
+          <div class="delivery-section">
+            <h3>Consegnati</h3>
+            <div class="tables-container" id="deliveryDeliveredContainer">
+              <!-- Ordini consegnati -->
+            </div>
+          </div>
+        </div>
+      </div>
       <div id="menu-editor" class="tab-content">
         <div class="menu-editor-container">
           <div class="mb-2 flex justify-between items-center">
@@ -368,6 +410,7 @@
               value="0"
             />
           </div>
+
           <div class="form-group">
             <label class="form-label">
               <input type="checkbox" id="orderItemComplement" /> Omaggio (prezzo
@@ -402,7 +445,7 @@
                 <!-- Rimozioni generate dinamicamente -->
               </div>
               <button id="addRemovalBtn" class="btn btn-sm btn-outline">
-                - Rimuovi Ingrediente
+                - Ingrediente
               </button>
             </div>
           </div>
@@ -607,11 +650,11 @@
 
             <div class="form-group">
               <button class="btn btn-danger mb-1" id="clearDataBtn">
-                Pulisci dati tavoli e asporto
+                Pulisci tutte le comande
               </button>
               <p class="mb-1">
-                Rimuove tutti i tavoli attivi e gli ordini da asporto. Questa
-                operazione non può essere annullata.
+                Rimuove tutti i tavoli attivi, gli ordini da asporto e i
+                domicili. Questa operazione non può essere annullata.
               </p>
             </div>
           </div>
@@ -670,6 +713,222 @@
         <div class="modal-footer">
           <button class="btn btn-outline" data-dismiss="modal">Annulla</button>
           <button class="btn btn-primary" id="saveCoversBtn">Conferma</button>
+        </div>
+      </div>
+    </div>
+    <!-- Modal Domicilio -->
+    <div id="deliveryModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title" id="deliveryModalTitle">Nuovo Domicilio</h3>
+          <button class="modal-close" data-dismiss="modal">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="deliveryCustomerName"
+              >Nome Cliente *</label
+            >
+            <input
+              type="text"
+              class="form-control"
+              id="deliveryCustomerName"
+              placeholder="Es. Mario Rossi"
+              required
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="deliveryAddress">Indirizzo</label>
+            <input
+              type="text"
+              class="form-control"
+              id="deliveryAddress"
+              placeholder="Es. Via Roma 123"
+            />
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="deliveryPhone">Telefono</label>
+            <input
+              type="text"
+              class="form-control"
+              id="deliveryPhone"
+              placeholder="Es. 333 1234567"
+            />
+          </div>
+
+          <!-- Sezione Orario Richiesto -->
+          <div class="form-group">
+            <label class="form-label">Orario Consegna</label>
+            <div
+              style="
+                display: flex;
+                align-items: center;
+                gap: 10px;
+                margin-bottom: 10px;
+              "
+            >
+              <label style="display: flex; align-items: center">
+                <input
+                  type="radio"
+                  name="deliveryTimeType"
+                  value="asap"
+                  id="deliveryAsap"
+                  checked
+                />
+                <span style="margin-left: 5px">Appena possibile</span>
+              </label>
+              <label style="display: flex; align-items: center">
+                <input
+                  type="radio"
+                  name="deliveryTimeType"
+                  value="scheduled"
+                  id="deliveryScheduled"
+                />
+                <span style="margin-left: 5px">Orario specifico</span>
+              </label>
+            </div>
+
+            <!-- Input orario (nascosto di default) -->
+            <div id="deliveryTimeInputContainer" style="display: none">
+              <div style="display: flex; gap: 10px; align-items: center">
+                <select
+                  id="deliveryHour"
+                  class="form-control"
+                  style="width: 80px"
+                >
+                  <!-- Opzioni ore generate dinamicamente -->
+                </select>
+                <span>:</span>
+                <select
+                  id="deliveryMinute"
+                  class="form-control"
+                  style="width: 80px"
+                >
+                  <option value="00">00</option>
+                  <option value="15">15</option>
+                  <option value="30">30</option>
+                  <option value="45">45</option>
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline" data-dismiss="modal">Annulla</button>
+          <button class="btn btn-primary" id="saveDeliveryBtn">Salva</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Pagamento Domicilio -->
+    <div id="deliveryPaymentModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Gestione Pagamento e Consegna</h3>
+          <button class="modal-close" data-dismiss="modal">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <!-- Sezione Pagamento -->
+          <div class="form-section">
+            <h4>Metodo di Pagamento</h4>
+            <div class="form-group">
+              <label class="form-label">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cash"
+                  id="paymentCash"
+                />
+                Contanti
+              </label>
+              <label class="form-label" style="margin-left: 20px">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="pos"
+                  id="paymentPos"
+                />
+                POS
+              </label>
+            </div>
+
+            <!-- Sezione contanti (visibile solo se selezionato contanti) -->
+            <div id="cashSection" style="display: none">
+              <div class="form-group">
+                <label class="form-label" for="cashGiven">Pagato con €</label>
+                <input
+                  type="number"
+                  class="form-control"
+                  id="cashGiven"
+                  placeholder="0.00"
+                  step="0.01"
+                  min="0"
+                />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Resto da dare:</label>
+                <div
+                  id="changeAmount"
+                  style="font-size: 1.5em; font-weight: bold; color: #2563eb"
+                >
+                  € 0.00
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Sezione Rider -->
+          <div class="form-section" style="margin-top: 20px">
+            <h4>Seleziona Rider</h4>
+            <div id="ridersContainer">
+              <!-- I rider verranno generati dinamicamente -->
+            </div>
+            <button
+              id="addRiderBtn"
+              class="btn btn-sm btn-outline"
+              style="margin-top: 10px"
+            >
+              + Aggiungi Nuovo Rider
+            </button>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline" data-dismiss="modal">Annulla</button>
+          <button class="btn btn-primary" id="saveDeliveryPaymentBtn">
+            Conferma
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal Aggiungi Rider -->
+    <div id="riderModal" class="modal">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h3 class="modal-title">Aggiungi Nuovo Rider</h3>
+          <button class="modal-close" data-dismiss="modal">&times;</button>
+        </div>
+
+        <div class="modal-body">
+          <div class="form-group">
+            <label class="form-label" for="riderName">Nome Rider</label>
+            <input
+              type="text"
+              class="form-control"
+              id="riderName"
+              placeholder="Es. Giovanni"
+            />
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button class="btn btn-outline" data-dismiss="modal">Annulla</button>
+          <button class="btn btn-primary" id="saveRiderBtn">Salva</button>
         </div>
       </div>
     </div>
